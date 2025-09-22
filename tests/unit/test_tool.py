@@ -1201,7 +1201,6 @@ def test_structured_output_schema_coercion_error(add_tool: AdditionTool) -> None
     assert isinstance(output, LocalDataValue)
     assert output.value == {"result": "not an int"}
 
-
 def test_tool_run_with_artifacts() -> None:
     """Test the _run_with_artifacts method (covers lines 307-308 in tool.py)."""
     # Use a simple tool that's already defined in the test suite
