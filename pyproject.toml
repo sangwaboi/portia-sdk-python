@@ -37,7 +37,15 @@ dependencies = [
     "testcontainers[redis]>=4.10.0 ; python_version >= '3.9' and python_version < '4.0'",
     "instructor>=1.9.0 ; python_version >= '3.9' and python_version < '4.0'",
     "litellm>=1.74.9.post1",
-    "openai<1.99"
+    "openai<1.99",
+    "boto3>=1.40.11",
+    "langchain-aws>=0.2.30",
+    "mistralai>=1.9.6",
+    "groq>=0.31.1",
+    "pydash>=8.0.5",
+    "browserbase>=1.4.0",
+    "browser-use>=0.1.40",
+    "langchain-mistralai>=0.2.11",
 ]
 
 [project.optional-dependencies]

@@ -102,6 +102,7 @@ class LLMProvider(Enum):
     CUSTOM = "custom"
     OLLAMA = "ollama"
     OPENROUTER = "openrouter"
+    META = "meta"
     GOOGLE_GENERATIVE_AI = "google"  # noqa: PIE796 - Alias for GOOGLE member
 
 
@@ -1332,3 +1333,103 @@ def map_message_to_instructor(message: Message) -> ChatCompletionMessageParam:
             return {"role": "system", "content": content}
         case _:
             raise ValueError(f"Unsupported message role: {message.role}")
+
+
+class OpenAICompatibleGenerativeModel(OpenAIGenerativeModel):
+    """Generic OpenAI-compatible model implementation using a configurable base_url.
+
+    Subclasses should set the `provider` enum and `base_url` class variables.
+    For dynamic base_url (like Meta), pass it via constructor.
+    """
+
+    # Use empty string to represent unset to avoid Optional override issues in subclasses
+    base_url: str = ""  # Override in subclasses for fixed endpoints
+
+    def __init__(
+        self,
+        *,
+        model_name: str,
+        api_key: SecretStr,
+        base_url: str | None = None,
+        seed: int = 343,
+        max_retries: int = 3,
+        temperature: float = 0,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize an OpenAI-compatible client with the provided base_url."""
+        # Use provided base_url or fall back to class variable
+        effective_base_url = base_url or self.base_url
+        if not effective_base_url:
+            class_name = self.__class__.__name__
+            raise ValueError(
+                f"base_url must be provided either in constructor "
+                f"or as class variable for {class_name}"
+            )
+
+        self._model_kwargs = kwargs.copy()
+        if "disabled_params" not in kwargs:
+            # Some OpenAI-compatible endpoints do not support parallel tool calls
+            kwargs["disabled_params"] = {"parallel_tool_calls": None}
+
+        client = ChatOpenAI(
+            name=model_name,
+            model=model_name,
+            seed=seed,
+            api_key=api_key,
+            max_retries=max_retries,
+            temperature=temperature,
+            base_url=effective_base_url,
+            **kwargs,
+        )
+        # Initialize the grandparent class directly to attach the prepared LangChain client
+        LangChainGenerativeModel.__init__(self, client, model_name)
+        # Initialize instructor client with error handling
+        try:
+            self._instructor_client = instructor.from_openai(
+                client=OpenAI(api_key=api_key.get_secret_value(), base_url=effective_base_url),
+                mode=instructor.Mode.JSON,
+            )
+        except TypeError:
+            # Fallback for instructor library compatibility issues
+            self._instructor_client = None
+
+        try:
+            self._instructor_client_async = instructor.from_openai(
+                client=AsyncOpenAI(api_key=api_key.get_secret_value(), base_url=effective_base_url),
+                mode=instructor.Mode.JSON,
+            )
+        except TypeError:
+            # Fallback for instructor library compatibility issues
+            self._instructor_client_async = None
+
+
+class MetaLlamaGenerativeModel(OpenAICompatibleGenerativeModel):
+    """Meta hosted Llama model implementation.
+
+    Uses an OpenAI-compatible endpoint provided by Meta (or a managed Llama Stack distribution)
+    configured via a base URL.
+    """
+
+    provider: LLMProvider = LLMProvider.META
+
+    def __init__(
+        self,
+        *,
+        model_name: str,
+        api_key: SecretStr,
+        base_url: str,
+        seed: int = 343,
+        max_retries: int = 3,
+        temperature: float = 0,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize with Meta hosted Llama client."""
+        super().__init__(
+            model_name=model_name,
+            api_key=api_key,
+            base_url=base_url,
+            seed=seed,
+            max_retries=max_retries,
+            temperature=temperature,
+            **kwargs,
+        )
