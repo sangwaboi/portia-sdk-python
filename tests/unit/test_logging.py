@@ -248,3 +248,30 @@ def test_formatter_sanitizes_stack_trace() -> None:
     assert " {value}" not in formatted
     # Stack traces should not be truncated by sanitizer when formatting exceptions
     assert "(truncated" not in formatted
+
+
+def test_logger_format_with_extra() -> None:
+    """Test logger format includes extra information when present (covers line 122)."""
+    from datetime import datetime, timezone
+    from portia.logger import Formatter
+    from portia.config import LogLevel
+    
+    formatter = Formatter()
+    
+    # Create a mock record with extra data
+    record = {
+        "time": datetime.now(tz=timezone.utc),
+        "level": LogLevel.INFO,
+        "name": "test.module",
+        "function": "test_function",
+        "line": 42,
+        "message": "Test message",
+        "exception": None,
+        "extra": {"user_id": 123, "action": "test_action"}  # This triggers line 122
+    }
+    
+    formatted = formatter.format(record)
+    
+    # Should include the extra information
+    assert " | {extra}" in formatted
+    assert "Test message" in formatted

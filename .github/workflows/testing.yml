@@ -1,4 +1,4 @@
-name: Python Testing
+byname: Python Testing
 
 on:
   pull_request_target:

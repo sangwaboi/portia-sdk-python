@@ -725,3 +725,20 @@ def test_provider_default_models_with_reasoning_openai(monkeypatch: pytest.Monke
 def test_parse_str_to_enum(value: str, expected: LLMProvider) -> None:
     """Test parse_str_to_enum works."""
     assert parse_str_to_enum(value, LLMProvider) is expected
+
+
+def test_ollama_model_construction() -> None:
+    """Test OLLAMA model construction (covers lines 993-996 in config.py)."""
+    # Import the dependencies that would be needed
+    pytest.importorskip("ollama")
+    
+    c = Config.from_default(
+        default_model="openai/gpt-4",
+        openai_api_key="test-key"  # Provide fallback to avoid validation errors
+    )
+    
+    # Test the OLLAMA construction path
+    model = c._construct_model_from_name(LLMProvider.OLLAMA, "qwen2.5:0.5b")
+    # OLLAMA models have provider CUSTOM, not OLLAMA
+    assert model.provider == LLMProvider.CUSTOM
+    assert str(model) == "custom/qwen2.5:0.5b"

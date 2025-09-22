@@ -1200,3 +1200,18 @@ def test_structured_output_schema_coercion_error(add_tool: AdditionTool) -> None
     assert output is not None
     assert isinstance(output, LocalDataValue)
     assert output.value == {"result": "not an int"}
+
+
+def test_tool_run_with_artifacts() -> None:
+    """Test the _run_with_artifacts method (covers lines 307-308 in tool.py)."""
+    # Use a simple tool that's already defined in the test suite
+    add_tool = AdditionTool()
+    ctx = get_test_tool_context()
+    
+    # Test _run_with_artifacts which returns tuple of (value, Output)
+    result_value, result_output = add_tool._run_with_artifacts(ctx, a=5, b=3)
+    
+    # Check the returned tuple
+    assert result_value == 8  # The actual computed value
+    assert isinstance(result_output, LocalDataValue)  # The output artifact
+    assert result_output.get_value() == 8  # Same value wrapped in artifact
